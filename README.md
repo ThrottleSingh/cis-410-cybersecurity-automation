@@ -34,3 +34,10 @@ infrastructure as code, and cloud deployment.
 ## Fun Fact
 
  I have a motorcycle page @throttlesing457 on Instagram
+
+ ## My Week 2 Infrastructure
+
+Runner VM: ub-server  
+Runner IP: 10.129.3.162  
+
+Pipeline status: [![Hello Pipeline](https://github.com/throttlesingh/cis-410-cybersecurity-automation/actions/workflows/hello-pipeline.yml/badge.svg)](https://github.com/throttlesingh/cis-410-cybersecurity-automation/actions/workflows/hello-pipeline.yml)
