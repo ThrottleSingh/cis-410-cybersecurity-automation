@@ -1,0 +1,67 @@
+name: Hello Pipeline
+
+ 
+
+on:
+
+  push:
+
+    branches:
+
+      - main
+
+ 
+
+jobs:
+
+  pipeline:
+
+    name: Run Pipeline Stages
+
+    runs-on: self-hosted
+
+ 
+
+    steps:
+
+      - name: Checkout repository
+
+        uses: actions/checkout@v4
+
+ 
+
+      - name: Build stage
+
+        run: |
+
+          echo '=== BUILD STAGE ==='
+
+          echo "Runner hostname: $(hostname)"
+
+          echo "Triggered by commit: ${{ github.sha }}"
+
+          echo "Branch: ${{ github.ref_name }}"
+
+ 
+
+      - name: Test stage
+
+        run: |
+
+          echo '=== TEST STAGE ==='
+
+          echo 'No automated tests yet — security scanning added in Week 5'
+
+          echo 'All checks passed!'
+
+ 
+
+      - name: Deploy stage
+
+        run: |
+
+          echo '=== DEPLOY STAGE ==='
+
+          echo 'Real deployment added in Week 3 (Docker + Dev VM + SSH)'
+
+          echo 'Pipeline completed successfully!'
