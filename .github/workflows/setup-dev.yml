@@ -1,0 +1,121 @@
+# .github/workflows/setup-dev.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# ONE-TIME: configures passwordless sudo and installs Docker on yourname-dev.
+# Trigger: manual (workflow_dispatch) — run ONCE after provisioning the Dev VM.
+# Never runs automatically. Never run again unless you rebuild the VM.
+#
+# No manual steps required on yourname-dev before running this workflow.
+# The workflow bootstraps itself:
+#   Step 1 — Configures passwordless sudo using SUDO_PASS secret
+#   Step 2 — Installs Docker Engine
+#   Step 3 — Verifies the installation
+#
+# REQUIRED GITHUB SECRETS:
+#   DEV_HOST    — IP address of yourname-dev
+#   DEV_USER    — SSH username (e.g. student)
+#   DEV_SSH_KEY — SSH private key (full contents of deploy_key)
+#   SUDO_PASS   — sudo password for DEV_USER on yourname-dev
+#                 (used once to bootstrap passwordless sudo, never again after)
+#
+# ORDER OF OPERATIONS (Week 3):
+#   Step 1 — Add all four secrets to your GitHub repository
+#   Step 2 — Run THIS workflow manually to configure sudo and install Docker
+#   Step 3 — Then push app files to trigger deploy-dev.yml
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: "Setup — Dev Server"
+
+on:
+  workflow_dispatch:   # Manual trigger only — no automatic runs
+
+jobs:
+  setup:
+    name: "Install Docker on Dev VM"
+    runs-on: self-hosted
+
+    steps:
+      # ── Step 1: Configure passwordless sudo ────────────────────────────────
+      # Pipeline SSH sessions are non-interactive — there is no terminal to
+      # type a password into. sudo -S reads the password from stdin instead.
+      # SUDO_PASS is stored as a GitHub Secret and never written to disk.
+      # After this step, all subsequent sudo commands run without a password.
+      # The guard checks if passwordless sudo is already configured so this
+      # step is safe to re-run.
+      - name: Configure passwordless sudo
+        run: |
+          echo "${{ secrets.DEV_SSH_KEY }}" > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+
+          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} \
+            "set -e
+            if sudo -n true 2>/dev/null; then
+              echo '=== Passwordless sudo already configured — skipping ==='
+            else
+              echo '=== Configuring passwordless sudo ==='
+              echo '${{ secrets.SUDO_PASS }}' | sudo -S bash -c \
+                'echo \"${{ secrets.DEV_USER }} ALL=(ALL) NOPASSWD:ALL\" > /etc/sudoers.d/${{ secrets.DEV_USER }} && chmod 0440 /etc/sudoers.d/${{ secrets.DEV_USER }}'
+              echo '=== Passwordless sudo configured ==='
+            fi"
+
+          rm /tmp/deploy_key
+
+      # ── Step 2: Install Docker Engine ──────────────────────────────────────
+      # Uses the official get.docker.com convenience script — fully supported
+      # on Ubuntu 22.04 (Jammy) and 24.04 (Noble).
+      # The heredoc (<<-EOF) allows $(whoami) to expand on the Dev VM at runtime
+      # so usermod and chown use the correct username without hardcoding it.
+      # The dash in <<-EOF strips leading tabs so indentation works correctly.
+      # 'set -e' stops the script immediately if any command fails.
+      # The 'if ! command -v docker' guard makes this step safe to re-run.
+      - name: Install Docker on Dev VM
+        run: |
+          echo "${{ secrets.DEV_SSH_KEY }}" > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+
+          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} << 'EOF'
+          set -e
+          if ! command -v docker &> /dev/null; then
+            echo "=== Docker not found — installing ==="
+            curl -fsSL https://get.docker.com -o get-docker.sh
+            sudo sh get-docker.sh
+            sudo usermod -aG docker $(whoami)
+            sudo mkdir -p /opt/app && sudo chown $(whoami):$(whoami) /opt/app
+            rm get-docker.sh
+            echo "=== Docker installed successfully ==="
+          else
+            echo "=== Docker already present — skipping install ==="
+            sudo mkdir -p /opt/app && sudo chown $(whoami):$(whoami) /opt/app
+          fi
+          EOF
+
+          rm /tmp/deploy_key
+
+      # ── Step 3: Verify the installation ────────────────────────────────────
+      # Confirms Docker and Docker Compose are available before deploy-dev.yml
+      # runs. Also confirms /opt/app exists and is owned by the correct user.
+      # If this step fails, re-run the workflow — do not proceed to deploy.
+      - name: Verify Docker
+        run: |
+          echo "${{ secrets.DEV_SSH_KEY }}" > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+
+          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} << 'EOF'
+          set -e
+          echo "=== Logged in as: $(whoami) ==="
+
+          echo "=== Docker version ==="
+          docker --version
+
+          echo "=== Docker Compose version ==="
+          docker compose version
+
+          echo "=== Deployment directory ==="
+          ls -la /opt/app
+
+          echo "=== Dev server is ready for deployment ==="
+          EOF
+
+          rm /tmp/deploy_key

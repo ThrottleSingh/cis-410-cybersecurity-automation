@@ -1,0 +1,357 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CIS 410 &mdash; {{ env | upper }} Deployment Dashboard</title>
+  <style>
+    /* ── Reset ── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    /* ── Tokens ── */
+    :root {
+      --navy:      #1F3864;
+      --blue:      #2E75B6;
+      --blue-pale: #EBF3FB;
+      --blue-text: #0C447C;
+      --green-bg:  #EAF3DE;
+      --green-text:#27500A;
+      --amber-bg:  #FFF2CC;
+      --amber-text:#633806;
+      --red-bg:    #FFC7CE;
+      --red-text:  #9C0006;
+      --gray-bg:   #F4F4F4;
+      --gray-text: #444441;
+      --border:    rgba(0,0,0,.1);
+      --surface:   #ffffff;
+      --page:      #F1EFE8;
+      --text:      #1a1a1a;
+      --text-muted:#666666;
+      --text-hint: #999999;
+      --mono:      'Consolas', 'SF Mono', 'Menlo', monospace;
+      --sans:      -apple-system, 'Segoe UI', Arial, sans-serif;
+      --radius-sm: 6px;
+      --radius-md: 10px;
+      --radius-lg: 14px;
+    }
+
+    body {
+      font-family: var(--sans);
+      background: var(--page);
+      color: var(--text);
+      font-size: 14px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* ── Top bar ── */
+    .topbar {
+      background: var(--navy);
+      padding: 0 24px;
+      height: 54px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .topbar-left  { display: flex; align-items: center; gap: 14px; }
+    .topbar-icon  {
+      width: 30px; height: 30px;
+      background: var(--blue);
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .topbar-icon svg { width: 16px; height: 16px; }
+    .topbar-title { font-size: 15px; font-weight: 500; color: #fff; }
+    .topbar-sub   { font-size: 12px; color: #7bafd4; margin-top: 1px; }
+    .env-badge {
+      background: #0D7377;
+      color: #9FE1CB;
+      font-size: 11px;
+      font-weight: 500;
+      padding: 3px 12px;
+      border-radius: 20px;
+      letter-spacing: .5px;
+      text-transform: uppercase;
+    }
+
+    /* ── Main layout ── */
+    .main {
+      max-width: 860px;
+      margin: 0 auto;
+      padding: 28px 20px 48px;
+    }
+
+    /* ── Section label ── */
+    .section-label {
+      font-size: 10px;
+      font-weight: 500;
+      color: var(--text-hint);
+      letter-spacing: 1px;
+      text-transform: uppercase;
+      margin: 28px 0 12px;
+    }
+    .section-label:first-child { margin-top: 0; }
+
+    /* ── Metric cards ── */
+    .metric-grid {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap: 12px;
+    }
+    @media (max-width: 600px) {
+      .metric-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+    .metric-card {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-md);
+      padding: 14px 16px;
+    }
+    .metric-label { font-size: 11px; color: var(--text-muted); margin-bottom: 6px; }
+    .metric-value { font-size: 20px; font-weight: 500; color: var(--text); display: flex; align-items: center; gap: 7px; }
+    .metric-sub   { font-size: 11px; color: var(--text-hint); margin-top: 3px; }
+    .dot { display: inline-block; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .dot-green { background: #639922; }
+    .dot-blue  { background: #185FA5; }
+
+    /* ── Panel ── */
+    .panel {
+      background: var(--surface);
+      border: 0.5px solid var(--border);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      margin-bottom: 16px;
+    }
+    .panel-header {
+      padding: 12px 18px;
+      border-bottom: 0.5px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .panel-title { font-size: 13px; font-weight: 500; color: var(--text); }
+    .panel-body  { padding: 4px 18px; }
+
+    /* ── Info rows ── */
+    .info-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 10px 0;
+      border-bottom: 0.5px solid rgba(0,0,0,.06);
+    }
+    .info-row:last-child { border-bottom: none; }
+    .info-key { font-size: 13px; color: var(--text-muted); }
+    .info-val { font-size: 13px; font-family: var(--mono); color: var(--text); }
+
+    /* ── Badges ── */
+    .badge {
+      font-size: 11px;
+      font-weight: 500;
+      padding: 2px 8px;
+      border-radius: 5px;
+      font-family: var(--sans);
+    }
+    .badge-green  { background: var(--green-bg);  color: var(--green-text); }
+    .badge-blue   { background: var(--blue-pale); color: var(--blue-text); }
+    .badge-amber  { background: var(--amber-bg);  color: var(--amber-text); }
+
+    /* ── Security grid ── */
+    .sec-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+    @media (max-width: 480px) { .sec-grid { grid-template-columns: 1fr; } }
+    .sec-item {
+      background: var(--gray-bg);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+    }
+    .sec-item-label { font-size: 11px; color: var(--text-hint); margin-bottom: 3px; }
+    .sec-item-val   { font-size: 13px; font-weight: 500; color: var(--text); }
+    .sec-item-val.pass { color: var(--green-text); }
+
+    /* ── Health list ── */
+    .health-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 0.5px solid rgba(0,0,0,.06);
+    }
+    .health-row:last-child { border-bottom: none; }
+    .health-icon {
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+    .health-name { font-size: 13px; font-weight: 500; color: var(--text); }
+    .health-path { font-size: 12px; color: var(--text-muted); font-family: var(--mono); }
+    .health-status { margin-left: auto; }
+
+    /* ── Footer ── */
+    footer {
+      text-align: center;
+      font-size: 11px;
+      color: var(--text-hint);
+      padding: 32px 0 16px;
+      border-top: 0.5px solid var(--border);
+      margin-top: 32px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Top navigation bar -->
+  <nav class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-icon">
+        <svg viewBox="0 0 16 16" fill="none">
+          <rect x="1" y="1" width="6" height="6" rx="1.5" fill="#7bafd4"/>
+          <rect x="9" y="1" width="6" height="6" rx="1.5" fill="#7bafd4"/>
+          <rect x="1" y="9" width="6" height="6" rx="1.5" fill="#7bafd4"/>
+          <rect x="9" y="9" width="6" height="6" rx="1.5" fill="rgba(123,175,212,.4)"/>
+        </svg>
+      </div>
+      <div>
+        <div class="topbar-title">CIS 410 &mdash; DevSecOps Platform</div>
+        <div class="topbar-sub">Deployment Status Dashboard</div>
+      </div>
+    </div>
+    <div class="env-badge">{{ env }}</div>
+  </nav>
+
+  <main class="main">
+
+    <!-- Metric cards -->
+    <p class="section-label">Overview</p>
+    <div class="metric-grid">
+      <div class="metric-card">
+        <div class="metric-label">Status</div>
+        <div class="metric-value"><span class="dot dot-green"></span> Running</div>
+        <div class="metric-sub">Container healthy</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Environment</div>
+        <div class="metric-value">{{ env }}</div>
+        <div class="metric-sub">Port {{ port }}</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">App version</div>
+        <div class="metric-value">{{ version }}</div>
+        <div class="metric-sub">week3-release</div>
+      </div>
+      <div class="metric-card">
+        <div class="metric-label">Pipeline</div>
+        <div class="metric-value"><span class="dot dot-blue"></span> Passing</div>
+        <div class="metric-sub">{{ workflow }}</div>
+      </div>
+    </div>
+
+    <!-- Deployment info -->
+    <p class="section-label">Deployment info</p>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Container &amp; host</span>
+      </div>
+      <div class="panel-body">
+        <div class="info-row">
+          <span class="info-key">Container hostname</span>
+          <span class="info-val">{{ hostname }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Host VM</span>
+          <span class="info-val">{{ env }}-vm</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Deployed at</span>
+          <span class="info-val">{{ deploy_time }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Commit SHA</span>
+          <span class="info-val">{{ commit_sha }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Branch</span>
+          <span class="info-val">{{ branch }}</span>
+        </div>
+        <div class="info-row">
+          <span class="info-key">Triggered by</span>
+          <span class="info-val">{{ workflow }}</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Container security -->
+    <p class="section-label">Security checks</p>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Container hardening</span>
+        <span class="badge badge-green">All rules passing</span>
+      </div>
+      <div class="panel-body" style="padding-top:14px; padding-bottom:14px;">
+        <div class="sec-grid">
+          <div class="sec-item">
+            <div class="sec-item-label">Running user</div>
+            <div class="sec-item-val pass">appuser (non-root)</div>
+          </div>
+          <div class="sec-item">
+            <div class="sec-item-label">Base image</div>
+            <div class="sec-item-val">python:3.11-slim</div>
+          </div>
+          <div class="sec-item">
+            <div class="sec-item-label">Secrets storage</div>
+            <div class="sec-item-val pass">GitHub Secrets</div>
+          </div>
+          <div class="sec-item">
+            <div class="sec-item-label">.dockerignore</div>
+            <div class="sec-item-val pass">Present</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Health endpoints -->
+    <p class="section-label">Health endpoints</p>
+    <div class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Service health</span>
+      </div>
+      <div class="panel-body">
+        <div class="health-row">
+          <div class="health-icon" style="background:var(--green-bg)">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7l3.5 3.5L12 3.5" stroke="#27500A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="health-name">Home</div>
+            <div class="health-path">/</div>
+          </div>
+          <div class="health-status"><span class="badge badge-green">200 OK</span></div>
+        </div>
+        <div class="health-row">
+          <div class="health-icon" style="background:var(--green-bg)">
+            <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+              <path d="M2 7l3.5 3.5L12 3.5" stroke="#27500A" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div>
+            <div class="health-name">Health check</div>
+            <div class="health-path">/health &nbsp;&mdash;&nbsp; returns JSON</div>
+          </div>
+          <div class="health-status"><span class="badge badge-green">200 OK</span></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <footer>
+    CIS 410: Cybersecurity Automation &nbsp;&mdash;&nbsp; {{ env }}-vm &nbsp;&mdash;&nbsp; port {{ port }} &nbsp;&mdash;&nbsp; v{{ version }}
+  </footer>
+
+</body>
+</html>

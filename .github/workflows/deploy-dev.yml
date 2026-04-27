@@ -1,0 +1,90 @@
+# .github/workflows/deploy-dev.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# Deploys the Flask app to yourname-dev as a Docker container on port 5000.
+# Trigger: automatic on every push to main.
+# Assumes: Docker is already installed (by setup-dev.yml, run once before this).
+#
+# No Docker required on yourname-runner — uses native ssh and scp only.
+# ssh and scp are pre-installed on every Ubuntu machine.
+#
+# ORDER OF OPERATIONS:
+#   1. Run setup-dev.yml FIRST (manual, one time) to install Docker
+#   2. THIS workflow runs automatically on every git push to main
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: "Deploy — Dev"
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    name: "Build and Deploy to Dev VM"
+    runs-on: self-hosted
+
+    steps:
+      # ── Step 1: Check out the latest code ──────────────────────────────────
+      # Makes the repository files available on the runner for the scp step.
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Step 2: Copy app files to the Dev VM ───────────────────────────────
+      # Transfers app/, Dockerfile, .dockerignore, and docker-compose.yml
+      # to /opt/app on yourname-dev. Docker builds from these files remotely.
+      # Key is written to a temp file and deleted immediately after use.
+      - name: Copy app files to Dev VM
+        run: |
+          echo "${{ secrets.DEV_SSH_KEY }}" > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+
+          scp -i /tmp/deploy_key -o StrictHostKeyChecking=no -r \
+            app/ Dockerfile .dockerignore docker-compose.yml \
+            ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:/opt/app/
+
+          rm /tmp/deploy_key
+
+      # ── Step 3: Build the image and start the container ────────────────────
+      # Uses 'sudo docker' instead of plain 'docker' because non-interactive
+      # SSH sessions may not activate the docker group membership set during
+      # setup — sudo bypasses group lookup entirely and goes straight to root.
+      # Passwordless sudo was configured by setup-dev.yml so no password prompt.
+      #
+      # GITHUB_SHA and GITHUB_REF_NAME are built-in GitHub Actions context
+      # variables injected into docker-compose so the dashboard shows which
+      # commit and branch triggered this deployment.
+      - name: Deploy Flask container
+        run: |
+          echo "${{ secrets.DEV_SSH_KEY }}" > /tmp/deploy_key
+          chmod 600 /tmp/deploy_key
+
+          ssh -i /tmp/deploy_key -o StrictHostKeyChecking=no \
+            ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} << 'EOF'
+          set -e
+          cd /opt/app
+
+          export DEPLOY_TIME="$(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          export GITHUB_SHA="${{ github.sha }}"
+          export GITHUB_REF_NAME="${{ github.ref_name }}"
+
+          echo "=== Deploying ${GITHUB_SHA:0:7} from ${GITHUB_REF_NAME} ==="
+
+          sudo docker compose down --remove-orphans
+          sudo DEPLOY_TIME="${DEPLOY_TIME}" GITHUB_SHA="${GITHUB_SHA}" GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
+            docker compose up -d --build
+
+          echo "=== Deploy complete ==="
+          sudo docker compose ps
+          EOF
+
+          rm /tmp/deploy_key
+
+      # ── Step 4: Smoke test ──────────────────────────────────────────────────
+      # Waits 4 seconds for the container to start, then calls the /health
+      # endpoint. The -f flag makes curl return a non-zero exit code if the
+      # HTTP response is 4xx or 5xx, which fails this step and the whole run.
+      - name: Smoke test
+        run: |
+          sleep 4
+          curl -f "http://${{ secrets.DEV_HOST }}:5000/health" | python3 -m json.tool
+          echo "=== Smoke test passed — app is live at http://${{ secrets.DEV_HOST }}:5000 ==="

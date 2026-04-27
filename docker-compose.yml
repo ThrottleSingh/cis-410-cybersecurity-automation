@@ -1,0 +1,16 @@
+services:
+  web:
+    build: .
+    container_name: cis410-web
+    ports:
+      - "5000:5000"
+    restart: unless-stopped
+    environment:
+      # These values are injected by the deploy workflow at run time.
+      # They show up on the dashboard so students can see each deploy is unique.
+      - ENVIRONMENT=dev
+      - APP_VERSION=1.0.0
+      - DEPLOY_TIME=${DEPLOY_TIME:-unknown}
+      - COMMIT_SHA=${GITHUB_SHA:-local}
+      - BRANCH=${GITHUB_REF_NAME:-main}
+      - WORKFLOW=deploy-dev.yml
