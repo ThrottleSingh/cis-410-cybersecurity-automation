@@ -79,7 +79,8 @@ jobs:
           if ! command -v docker &> /dev/null; then
             echo "=== Docker not found — installing ==="
             curl -fsSL https://get.docker.com -o get-docker.sh
-            sudo sh get-docker.sh
+            sudo sh get-docker.sh || true
+            sudo apt-get install -y docker-ce docker-ce-cli containerd.io docker-compose-plugin docker-buildx-plugin
             sudo usermod -aG docker $(whoami)
             sudo mkdir -p /opt/app && sudo chown $(whoami):$(whoami) /opt/app
             rm get-docker.sh
