@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CorpDirectory — {{ environment | upper }}</title>
+  <title>Debug &mdash; CorpDirectory</title>
   <style>
     *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
     :root{
@@ -53,19 +53,17 @@
     .badge-ok{background:#dcfce7;color:#14532d}
     .tag{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--ink4);background:var(--surface3);border:0.5px solid var(--line2);border-radius:4px;padding:1px 6px;margin-top:4px}
     footer{text-align:center;font-size:11px;color:var(--ink4);padding:28px 0 16px;border-top:1px solid var(--line);margin-top:36px;letter-spacing:.1px}
-    .card-row{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px;margin-bottom:28px}
-    .card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;text-decoration:none;color:inherit;display:block}
-    .card:hover{border-color:var(--line2);transform:translateY(-1px)}
-    .card.card-alert{border-color:#fca5a5}
-    .card.card-alert:hover{border-color:#ef4444}
-    .card-eyebrow{font-size:10px;font-weight:600;letter-spacing:.8px;text-transform:uppercase;margin-bottom:14px;display:flex;align-items:center;gap:7px}
-    .eyebrow-dot{width:6px;height:6px;border-radius:50%}
-    .card-title{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:6px}
-    .card-desc{font-size:12px;color:var(--ink3);line-height:1.55}
-    .vuln-row{display:flex;align-items:flex-start;gap:13px;padding:13px 20px;border-bottom:1px solid rgba(0,0,0,.04)}
-    .vuln-row:last-child{border-bottom:none}
-    .vuln-name{font-size:13px;font-weight:500;color:var(--ink);margin-bottom:3px}
-    .vuln-desc{font-size:12px;color:var(--ink3);line-height:1.5}
+    .debug-wrap{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+    .debug-header{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
+    .debug-count{font-size:11.5px;color:var(--ink4)}
+    .debug-table{width:100%;border-collapse:collapse;font-size:12.5px}
+    .debug-table th{background:#0f0f14;color:rgba(255,255,255,.8);padding:8px 16px;text-align:left;font-weight:500;font-size:11px;letter-spacing:.3px;text-transform:uppercase}
+    .debug-table td{padding:8px 16px;border-bottom:1px solid var(--line);font-family:var(--mono);font-size:12px;word-break:break-all}
+    .debug-table td:first-child{color:var(--blue);font-weight:500;width:30%;word-break:normal}
+    .debug-table tr:last-child td{border-bottom:none}
+    .debug-table tr.sensitive td{background:rgba(255,245,245,.7)}
+    .debug-table tr.sensitive td:first-child{color:#c0392b}
+    .sensitive-note{display:inline-flex;align-items:center;gap:4px;font-size:10px;font-weight:600;letter-spacing:.3px;background:#fee2e2;color:#7f1d1d;padding:1px 5px;border-radius:3px;margin-left:6px;vertical-align:middle;font-family:var(--sans)}
   </style>
 </head>
 <body>
@@ -88,7 +86,7 @@
   </div>
 </nav>
 <div class="nav">
-  <a href="/" class="active">
+  <a href="/">
     <svg viewBox="0 0 14 14" fill="none"><rect x="1" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="8" y="1" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="1" y="8" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="8" y="8" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
     Overview
   </a>
@@ -96,91 +94,51 @@
     <svg viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.2"/><path d="M10 10l2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
     User search
   </a>
-  <a href="/debug">
+  <a href="/debug" class="active">
     <svg viewBox="0 0 14 14" fill="none"><rect x="2" y="4" width="10" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 4V3a2 2 0 014 0v1" stroke="currentColor" stroke-width="1.2"/></svg>
     Debug
   </a>
 </div>
 <main class="main">
+  <div class="page-title">Debug &mdash; environment variables</div>
+  <div class="page-sub">This endpoint is unauthenticated and accessible without any login.</div>
+
   <div class="warn">
     <div class="warn-stripe"></div>
     <div class="warn-icon">
       <svg viewBox="0 0 12 12" fill="none"><path d="M6 2.5v3.8M6 8.8h.01" stroke="#c0392b" stroke-width="1.4" stroke-linecap="round"/><path d="M5.13 1.5L1 9.5h10L6.87 1.5a1 1 0 00-1.74 0z" stroke="#c0392b" stroke-width="1" stroke-linejoin="round"/></svg>
     </div>
     <div>
-      <div class="warn-title">Intentionally vulnerable &mdash; CIS 410 Week 4</div>
-      <div class="warn-body">Deployed to <strong>{{ environment }}</strong> only. Staging and production run the secure Week&nbsp;3 app. Observe the vulnerabilities below before Week&nbsp;5 adds automated security scanning.</div>
+      <div class="warn-title">Information disclosure vulnerability</div>
+      <div class="warn-body">No authentication required. In a real application this exposes database passwords, API keys, and deployment secrets to anyone who reaches this URL. OWASP ZAP (DAST) will detect this unauthenticated endpoint in Week&nbsp;5. Highlighted rows contain pipeline metadata injected at runtime.</div>
     </div>
   </div>
 
-  <div class="page-title">CorpDirectory</div>
-  <div class="page-sub">A fictional internal tool purpose-built with real vulnerabilities for CIS 410 observation.</div>
-
-  <div class="card-row">
-    <a class="card" href="/search">
-      <div class="card-eyebrow" style="color:#1e40af"><div class="eyebrow-dot" style="background:#1e40af"></div>Search</div>
-      <div class="card-title">User search</div>
-      <div class="card-desc">Look up employees by username. Try a payload like <code>' OR '1'='1</code> to bypass the WHERE clause and return every record.</div>
-    </a>
-    <a class="card card-alert" href="/search?q=%27+OR+%271%27%3D%271">
-      <div class="card-eyebrow" style="color:#c0392b"><div class="eyebrow-dot" style="background:#ef4444"></div>SQL injection</div>
-      <div class="card-title">Injection demo</div>
-      <div class="card-desc">Pre-loaded payload &mdash; returns all 6 records in a single request without knowing any valid username.</div>
-    </a>
-    <a class="card" href="/debug">
-      <div class="card-eyebrow" style="color:#92400e"><div class="eyebrow-dot" style="background:#f59e0b"></div>Info disclosure</div>
-      <div class="card-title">Debug endpoint</div>
-      <div class="card-desc">All container env vars with no auth. Exposes <code>DEPLOY_TIME</code>, <code>COMMIT_SHA</code>, and every injected secret.</div>
-    </a>
-  </div>
-
-  <div class="panel">
-    <div class="panel-header">
-      <span class="panel-title">Vulnerabilities in this build</span>
-      <span class="panel-meta">5 issues &nbsp;&middot;&nbsp; 3 HIGH &nbsp;&middot;&nbsp; 2 MEDIUM</span>
+  <div class="debug-wrap">
+    <div class="debug-header">
+      <span class="panel-title">Environment variables</span>
+      <span class="debug-count">{{ env_vars | length }} variables exposed</span>
     </div>
-    <div class="vuln-row">
-      <span class="badge badge-high">HIGH</span>
-      <div>
-        <div class="vuln-name">SQL injection &mdash; /search</div>
-        <div class="vuln-desc">String concatenation: <code>WHERE username = '" + q + "'"</code>. One malformed input returns every row.</div>
-        <div><span class="tag">Semgrep &middot; SAST</span></div>
-      </div>
-    </div>
-    <div class="vuln-row">
-      <span class="badge badge-high">HIGH</span>
-      <div>
-        <div class="vuln-name">Information disclosure &mdash; /debug</div>
-        <div class="vuln-desc">Unauthenticated endpoint returns all environment variables. No login, no token, no restriction.</div>
-        <div><span class="tag">OWASP ZAP &middot; DAST</span></div>
-      </div>
-    </div>
-    <div class="vuln-row">
-      <span class="badge badge-high">HIGH</span>
-      <div>
-        <div class="vuln-name">Container runs as root</div>
-        <div class="vuln-desc">No <code>USER</code> instruction in Dockerfile. Verify: <code>docker compose exec web whoami</code> &rarr; <code>root</code>.</div>
-        <div><span class="tag">Trivy &middot; Container</span></div>
-      </div>
-    </div>
-    <div class="vuln-row">
-      <span class="badge badge-med">MEDIUM</span>
-      <div>
-        <div class="vuln-name">Werkzeug debug mode enabled</div>
-        <div class="vuln-desc"><code>debug=True</code> in <code>app.run()</code> &mdash; exposes interactive debugger, remote code execution risk.</div>
-        <div><span class="tag">Semgrep &middot; SAST</span></div>
-      </div>
-    </div>
-    <div class="vuln-row">
-      <span class="badge badge-med">MEDIUM</span>
-      <div>
-        <div class="vuln-name">Unpinned base image</div>
-        <div class="vuln-desc"><code>FROM python:3.11</code> resolves to a different digest on every pull. Non-reproducible, silent CVE introduction.</div>
-        <div><span class="tag">Trivy &middot; SCA</span></div>
-      </div>
-    </div>
+    <table class="debug-table">
+      <thead>
+        <tr><th style="width:32%">Variable</th><th>Value</th></tr>
+      </thead>
+      <tbody>
+        {% for key, value in env_vars %}
+        <tr {% if key in ['DEPLOY_TIME','COMMIT_SHA','BRANCH','ENVIRONMENT','WORKFLOW','APP_VERSION'] %}class="sensitive"{% endif %}>
+          <td>
+            {{ key }}
+            {% if key in ['DEPLOY_TIME','COMMIT_SHA','BRANCH','ENVIRONMENT','WORKFLOW','APP_VERSION'] %}
+              <span class="sensitive-note">pipeline</span>
+            {% endif %}
+          </td>
+          <td>{{ value }}</td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 </main>
-<footer>CIS 410: Cybersecurity Automation &nbsp;&middot;&nbsp; Week 4 &nbsp;&middot;&nbsp; {{ hostname }} &nbsp;&middot;&nbsp; {{ environment }} &nbsp;&middot;&nbsp; port {{ port }}</footer>
+<footer>CIS 410: Cybersecurity Automation &nbsp;&middot;&nbsp; Week 4 &nbsp;&middot;&nbsp; {{ hostname }} &nbsp;&middot;&nbsp; {{ environment }}</footer>
 </body>
 </html>
