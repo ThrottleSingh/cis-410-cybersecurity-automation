@@ -1,0 +1,106 @@
+# .github/workflows/deploy-staging.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# Deploys the Flask app to yourname-staging as a Docker container on port 5001.
+# Trigger: manual (workflow_dispatch) only — never auto-deploys.
+# Assumes: Docker is already installed (by setup-staging.yml, run once before this).
+#
+# No Docker required on yourname-runner — uses native ssh and scp only.
+#
+# env: SSH_KEY passes the multi-line private key through an environment variable
+# instead of inline ${{ secrets.* }} — this preserves newlines and PEM headers
+# correctly. Using secrets inline in run: strips newlines causing 'invalid format'.
+#
+# PROMOTION GATE: You must manually trigger this workflow.
+# Every run creates an audit trail entry showing who deployed, when, and why.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: "Deploy — Staging"
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for this deployment (e.g. QA approved, ticket PROJ-142)'
+        required: false    # Optional for staging — required: true on production
+
+jobs:
+  deploy:
+    name: "Deploy to Staging"
+    runs-on: self-hosted
+
+    steps:
+      # ── Step 1: Check out the code so scp can access the files ─────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Step 2: Write the reason to the run log — permanent audit trail ────
+      # github.actor = GitHub username of whoever clicked Run workflow
+      - name: Log deployment reason
+        run: |
+          echo "=== STAGING DEPLOY ==="
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Reason: ${{ github.event.inputs.reason || 'no reason provided' }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+
+      # ── Step 3: Copy app files to /opt/app on yourname-staging ─────────────
+      # Key is passed via env: to preserve newlines, written to /tmp, used, deleted.
+      - name: Copy app files to Staging VM
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        run: |
+          echo "$SSH_KEY" > /tmp/staging_key
+          chmod 600 /tmp/staging_key
+
+          scp -i /tmp/staging_key -o StrictHostKeyChecking=no -r \
+            app/ Dockerfile .dockerignore docker-compose.yml \
+            ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }}:/opt/app/
+
+          rm /tmp/staging_key
+
+      # ── Step 4: Build and start the container on Staging ───────────────────
+      # sudo docker — SSH sessions may not activate the docker group set during setup.
+      # Passwordless sudo (configured by setup-staging.yml) handles this cleanly.
+      #
+      # HOST_PORT=5001 maps host port 5001 to container port 5000 so staging
+      # runs alongside dev (5000) and prod (5002) without port conflicts.
+      # ENVIRONMENT=staging is injected so the dashboard shows the STAGING badge.
+      - name: Deploy Flask container on Staging
+        env:
+          SSH_KEY: ${{ secrets.STAGING_SSH_KEY }}
+        run: |
+          echo "$SSH_KEY" > /tmp/staging_key
+          chmod 600 /tmp/staging_key
+
+          ssh -i /tmp/staging_key -o StrictHostKeyChecking=no \
+            ${{ secrets.STAGING_USER }}@${{ secrets.STAGING_HOST }} << 'EOF'
+          set -e
+          cd /opt/app
+
+          export DEPLOY_TIME="$(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          export GITHUB_SHA="${{ github.sha }}"
+          export GITHUB_REF_NAME="${{ github.ref_name }}"
+          export HOST_PORT=5001
+          export ENVIRONMENT=staging
+
+          echo "=== Deploying ${GITHUB_SHA:0:7} to staging (port ${HOST_PORT}) ==="
+
+          sudo docker compose down --remove-orphans
+          sudo HOST_PORT="${HOST_PORT}" ENVIRONMENT="${ENVIRONMENT}" \
+               DEPLOY_TIME="${DEPLOY_TIME}" GITHUB_SHA="${GITHUB_SHA}" \
+               GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
+               docker compose up -d --build
+
+          echo "=== Staging deploy complete ==="
+          sudo docker compose ps
+          EOF
+
+          rm /tmp/staging_key
+
+      # ── Step 5: Smoke test ──────────────────────────────────────────────────
+      # curl -f returns a non-zero exit code on 4xx/5xx — fails the whole run.
+      - name: Smoke test
+        run: |
+          sleep 4
+          curl -f "http://${{ secrets.STAGING_HOST }}:5001/health" | python3 -m json.tool
+          echo "=== Staging smoke test passed — app is live at http://${{ secrets.STAGING_HOST }}:5001 ==="

@@ -1,0 +1,107 @@
+# .github/workflows/deploy-prod.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# Deploys the Flask app to yourname-prod as a Docker container on port 5002.
+# Trigger: manual (workflow_dispatch) only — never auto-deploys.
+# Assumes: Docker is already installed (by setup-prod.yml, run once before this).
+#
+# No Docker required on yourname-runner — uses native ssh and scp only.
+#
+# env: SSH_KEY passes the multi-line private key through an environment variable
+# instead of inline ${{ secrets.* }} — this preserves newlines and PEM headers
+# correctly. Using secrets inline in run: strips newlines causing 'invalid format'.
+#
+# PROMOTION GATE: reason is REQUIRED — every production deploy needs an audit trail.
+# GitHub enforces this: the Run workflow button is disabled until you type a reason.
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: "Deploy — Production"
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: 'Reason for this deployment (required — audit trail)'
+        required: true     # GitHub blocks the run button until this is filled in
+
+jobs:
+  deploy:
+    name: "Deploy to Production"
+    runs-on: self-hosted
+
+    steps:
+      # ── Step 1: Check out the code so scp can access the files ─────────────
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # ── Step 2: Audit log — who deployed, why, what commit, when ───────────
+      # This output is permanent in the workflow run log — visible in GitHub forever.
+      - name: Log deployment reason
+        run: |
+          echo "=== PRODUCTION DEPLOY ==="
+          echo "Triggered by: ${{ github.actor }}"
+          echo "Reason: ${{ github.event.inputs.reason }}"
+          echo "Commit: ${{ github.sha }}"
+          echo "Branch: ${{ github.ref_name }}"
+          echo "Timestamp: $(date -u)"
+
+      # ── Step 3: Copy app files to /opt/app on yourname-prod ────────────────
+      # Key is passed via env: to preserve newlines, written to /tmp, used, deleted.
+      - name: Copy app files to Production VM
+        env:
+          SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+        run: |
+          echo "$SSH_KEY" > /tmp/prod_key
+          chmod 600 /tmp/prod_key
+
+          scp -i /tmp/prod_key -o StrictHostKeyChecking=no -r \
+            app/ Dockerfile .dockerignore docker-compose.yml \
+            ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }}:/opt/app/
+
+          rm /tmp/prod_key
+
+      # ── Step 4: Build and start the container on Production ────────────────
+      # sudo docker — SSH sessions may not activate the docker group set during setup.
+      # Passwordless sudo (configured by setup-prod.yml) handles this cleanly.
+      #
+      # HOST_PORT=5002 maps host port 5002 to container port 5000 so production
+      # runs alongside dev (5000) and staging (5001) without port conflicts.
+      # ENVIRONMENT=production is injected so the dashboard shows the PRODUCTION badge.
+      - name: Deploy Flask container on Production
+        env:
+          SSH_KEY: ${{ secrets.PROD_SSH_KEY }}
+        run: |
+          echo "$SSH_KEY" > /tmp/prod_key
+          chmod 600 /tmp/prod_key
+
+          ssh -i /tmp/prod_key -o StrictHostKeyChecking=no \
+            ${{ secrets.PROD_USER }}@${{ secrets.PROD_HOST }} << 'EOF'
+          set -e
+          cd /opt/app
+
+          export DEPLOY_TIME="$(date -u +'%Y-%m-%d %H:%M:%S UTC')"
+          export GITHUB_SHA="${{ github.sha }}"
+          export GITHUB_REF_NAME="${{ github.ref_name }}"
+          export HOST_PORT=5002
+          export ENVIRONMENT=production
+
+          echo "=== Deploying ${GITHUB_SHA:0:7} to production (port ${HOST_PORT}) ==="
+
+          sudo docker compose down --remove-orphans
+          sudo HOST_PORT="${HOST_PORT}" ENVIRONMENT="${ENVIRONMENT}" \
+               DEPLOY_TIME="${DEPLOY_TIME}" GITHUB_SHA="${GITHUB_SHA}" \
+               GITHUB_REF_NAME="${GITHUB_REF_NAME}" \
+               docker compose up -d --build
+
+          echo "=== Production deploy complete ==="
+          sudo docker compose ps
+          EOF
+
+          rm /tmp/prod_key
+
+      # ── Step 5: Smoke test ──────────────────────────────────────────────────
+      # curl -f returns a non-zero exit code on 4xx/5xx — fails the whole run.
+      - name: Smoke test
+        run: |
+          sleep 4
+          curl -f "http://${{ secrets.PROD_HOST }}:5002/health" | python3 -m json.tool
+          echo "=== Production smoke test passed — app is live at http://${{ secrets.PROD_HOST }}:5002 ==="
