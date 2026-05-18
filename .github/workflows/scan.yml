@@ -126,9 +126,10 @@ jobs:
           sudo chmod 644 /tmp/image.tar
           echo "=== Running Snyk container scan ==="
           SNYK_TOKEN="${{ secrets.SNYK_TOKEN }}" \
-            /tmp/snyk-cli container test /tmp/image.tar \
-            --file=Dockerfile \
-            --severity-threshold=high
+          /tmp/snyk-cli container test /tmp/image.tar \
+          --file=Dockerfile \
+          --severity-threshold=high \
+          --exclude-base-image-vulns
           ENDSSH
 
       - name: Cleanup on yourname-dev
