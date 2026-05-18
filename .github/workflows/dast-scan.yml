@@ -1,0 +1,101 @@
+# .github/workflows/dast-scan.yml
+# ─────────────────────────────────────────────────────────────────────────────
+# Manual DAST scan — OWASP ZAP baseline against the live dev environment.
+# Trigger: workflow_dispatch — run AFTER a successful deploy to dev.
+#
+# Runs ZAP on yourname-dev via SSH (Docker is installed there).
+# Report is copied back to the runner and uploaded as an artifact.
+#
+# REQUIRED SECRETS (all already configured from Week 3):
+#   DEV_HOST    — IP of yourname-dev
+#   DEV_USER    — SSH username
+#   DEV_SSH_KEY — SSH private key
+# ─────────────────────────────────────────────────────────────────────────────
+
+name: "DAST Scan — OWASP ZAP"
+
+on:
+  workflow_dispatch:
+    inputs:
+      target:
+        description: 'Full URL to scan — e.g. http://192.168.10.45:5000 (dev) or http://192.168.10.46:5001 (staging)'
+        required: false
+        default: ''
+      environment_label:
+        description: 'Label for the report — e.g. dev, staging, prod'
+        required: false
+        default: 'dev' 
+
+jobs:
+  dast:
+    name: "OWASP ZAP Baseline Scan"
+    runs-on: self-hosted
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up SSH key
+        run: |
+          echo "${{ secrets.DEV_SSH_KEY }}" > /tmp/dast_key
+          chmod 600 /tmp/dast_key
+
+      # Create report directory on dev with open permissions so the ZAP
+      # container (runs as uid 1000 inside Docker) can write to it
+      - name: Prepare report directory on yourname-dev
+        run: |
+          ssh -i /tmp/dast_key -o StrictHostKeyChecking=no \
+            ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} \
+            "rm -rf /tmp/zap-reports && mkdir -p /tmp/zap-reports && chmod 777 /tmp/zap-reports"
+
+      # Run ZAP baseline scan on dev — uses Docker already installed there
+      - name: Run ZAP baseline scan on yourname-dev
+        run: |
+          TARGET="${{ github.event.inputs.target }}"
+          if [ -z "$TARGET" ]; then
+            TARGET="http://${{ secrets.DEV_HOST }}:5000"
+          fi
+          echo "Target: $TARGET"
+
+          ssh -i /tmp/dast_key -o StrictHostKeyChecking=no \
+            ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} \
+            "sudo docker run --rm \
+              -v /tmp/zap-reports:/zap/wrk/:rw \
+              ghcr.io/zaproxy/zaproxy:stable \
+              zap-baseline.py \
+              -t $TARGET \
+              -r zap-report.html \
+              -J zap-report.json \
+              -I" || true
+
+      # Verify reports were created then copy back to runner
+      - name: Copy ZAP reports back to runner
+        run: |
+          echo "=== Files in /tmp/zap-reports on dev ==="
+          ssh -i /tmp/dast_key -o StrictHostKeyChecking=no \
+            ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} \
+            "ls -la /tmp/zap-reports/"
+
+          scp -i /tmp/dast_key -o StrictHostKeyChecking=no \
+            ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:/tmp/zap-reports/zap-report.html \
+            ./zap-report.html
+
+          scp -i /tmp/dast_key -o StrictHostKeyChecking=no \
+            ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }}:/tmp/zap-reports/zap-report.json \
+            ./zap-report.json
+
+      - name: Upload ZAP Report
+        uses: actions/upload-artifact@v4
+        with:
+          name: zap-dast-report-${{ github.event.inputs.environment_label || 'dev' }}-run${{ github.run_number }}
+          path: |
+            zap-report.html
+            zap-report.json
+
+      - name: Cleanup
+        if: always()
+        run: |
+          ssh -i /tmp/dast_key -o StrictHostKeyChecking=no \
+            ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} \
+            "sudo rm -rf /tmp/zap-reports" || true
+          rm -f /tmp/dast_key
