@@ -15,7 +15,7 @@
 #      was: no USER instruction     ← process ran as root inside the container
 # ─────────────────────────────────────────────────────────────────────────────
 
-FROM python:3.11-slim
+FROM python:3.11.9-slim-bookworm
 
 WORKDIR /app
 
