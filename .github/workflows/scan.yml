@@ -100,7 +100,7 @@ jobs:
         run: |
           ssh -i /tmp/scan_key -o StrictHostKeyChecking=no \
             ${{ secrets.DEV_USER }}@${{ secrets.DEV_HOST }} \
-            "mkdir -p /tmp/snyk-scan"
+            "rm -rf /tmp/snyk-scan && mkdir -p /tmp/snyk-scan"
 
       - name: Copy files to yourname-dev
         run: |
