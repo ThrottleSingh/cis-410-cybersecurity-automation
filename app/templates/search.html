@@ -4,93 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>User search &mdash; CorpDirectory</title>
-  <style>
-    *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-    :root{
-      --ink:#0f0f14;--ink2:#3a3a4a;--ink3:#6b6b80;--ink4:#9999aa;
-      --surface:#fff;--surface2:#f7f7fa;--surface3:#f0f0f5;
-      --line:rgba(0,0,0,.07);--line2:rgba(0,0,0,.12);
-      --red-text:#7f1d1d;--red-bg:#fff5f5;--red-border:#fca5a5;--red:#c0392b;
-      --amber:#92400e;--amber-bg:#fffbeb;--amber-border:#fcd34d;
-      --blue:#1e40af;--blue-bg:#eff6ff;--blue-border:#93c5fd;
-      --green:#166534;--green-bg:#f0fdf4;--green-border:#86efac;
-      --mono:'Consolas','Menlo',monospace;
-      --sans:'Inter',-apple-system,'Segoe UI',Arial,sans-serif;
-    }
-    body{font-family:var(--sans);background:var(--surface2);color:var(--ink);font-size:13.5px;line-height:1.6;min-height:100vh}
-    .topbar{background:#0f0f14;padding:0 24px;height:56px;display:flex;align-items:center;justify-content:space-between}
-    .brand{display:flex;align-items:center;gap:14px}
-    .brand-mark{width:34px;height:34px;background:#c0392b;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
-    .brand-mark svg{width:19px;height:19px}
-    .brand-name{font-size:15px;font-weight:600;color:#fff;letter-spacing:-.3px}
-    .brand-sub{font-size:11px;color:rgba(255,255,255,.33);letter-spacing:.1px}
-    .env-tag{display:flex;align-items:center;gap:7px;background:rgba(192,57,43,.18);border:1px solid rgba(192,57,43,.35);padding:5px 12px;border-radius:6px}
-    .env-dot{width:7px;height:7px;border-radius:50%;background:#ef4444}
-    .env-label{font-size:11.5px;font-weight:500;color:#fca5a5;letter-spacing:.2px}
-    .nav{background:rgba(15,15,20,.97);border-bottom:1px solid rgba(255,255,255,.06);padding:0 24px;display:flex}
-    .nav a{font-size:13px;color:rgba(255,255,255,.45);padding:12px 16px;text-decoration:none;border-bottom:2px solid transparent;display:flex;align-items:center;gap:7px}
-    .nav a svg{width:14px;height:14px;opacity:.6}
-    .nav a:hover{color:rgba(255,255,255,.75)}
-    .nav a.active{color:#fff;border-bottom-color:#ef4444}
-    .nav a.active svg{opacity:1}
-    .main{max-width:920px;margin:0 auto;padding:32px 24px 64px}
-    .page-title{font-size:20px;font-weight:600;color:var(--ink);letter-spacing:-.3px;margin-bottom:5px}
-    .page-sub{font-size:13px;color:var(--ink3);margin-bottom:28px}
-    .warn{background:#fff5f5;border:1px solid #fca5a5;border-radius:10px;padding:15px 18px;margin-bottom:28px;display:flex;gap:13px;align-items:flex-start}
-    .warn-stripe{width:3px;background:#ef4444;border-radius:2px;flex-shrink:0;align-self:stretch}
-    .warn-icon{width:22px;height:22px;background:#fee2e2;border-radius:50%;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:1px}
-    .warn-icon svg{width:12px;height:12px}
-    .warn-title{font-size:13px;font-weight:600;color:var(--red-text);margin-bottom:3px}
-    .warn-body{font-size:12.5px;color:#991b1b;line-height:1.55}
-    .panel{background:var(--surface);border:1px solid var(--line);border-radius:12px;overflow:hidden}
-    .panel-header{padding:14px 20px;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between}
-    .panel-title{font-size:13px;font-weight:600;color:var(--ink)}
-    .panel-meta{font-size:11.5px;color:var(--ink4)}
-    code,.code{font-family:var(--mono);font-size:11px;background:var(--surface3);padding:1px 5px;border-radius:4px;color:var(--ink2)}
-    .badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:4px;letter-spacing:.3px;white-space:nowrap;flex-shrink:0}
-    .badge-high{background:#fee2e2;color:#7f1d1d}
-    .badge-med{background:#fef9c3;color:#713f12}
-    .badge-ok{background:#dcfce7;color:#14532d}
-    .tag{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;color:var(--ink4);background:var(--surface3);border:0.5px solid var(--line2);border-radius:4px;padding:1px 6px;margin-top:4px}
-    footer{text-align:center;font-size:11px;color:var(--ink4);padding:28px 0 16px;border-top:1px solid var(--line);margin-top:36px;letter-spacing:.1px}
-    .search-card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:20px;margin-bottom:20px}
-    .search-row{display:flex;gap:8px;margin-bottom:14px}
-    .search-input{flex:1;height:38px;padding:0 12px;border:1px solid var(--line2);border-radius:8px;font-size:13px;font-family:var(--mono);background:var(--surface);color:var(--ink);outline:none}
-    .search-input:focus{border-color:#c0392b;box-shadow:0 0 0 3px rgba(192,57,43,.1)}
-    .search-btn{height:38px;padding:0 20px;border:1px solid var(--line2);border-radius:8px;background:var(--surface);cursor:pointer;font-size:13px;color:var(--ink);font-family:var(--sans)}
-    .search-btn:hover{background:var(--surface3)}
-    .payload-section{border-top:1px solid var(--line);padding-top:13px}
-    .payload-label{font-size:10.5px;font-weight:600;letter-spacing:.6px;text-transform:uppercase;color:var(--ink4);margin-bottom:8px}
-    .chips{display:flex;gap:6px;flex-wrap:wrap}
-    .chip{font-size:11.5px;padding:4px 10px;border:1px solid var(--line);border-radius:6px;cursor:pointer;background:var(--surface2);color:var(--ink3);font-family:var(--mono);text-decoration:none;transition:border-color .1s}
-    .chip:hover{border-color:var(--line2);color:var(--ink)}
-    .chip-danger{border-color:#fca5a5;color:#c0392b;background:#fff5f5}
-    .chip-danger:hover{background:#fee2e2;border-color:#ef4444}
-    .sql-box{background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;padding:12px 16px;margin-bottom:16px}
-    .sql-box-label{font-size:10px;font-weight:600;letter-spacing:.7px;text-transform:uppercase;color:#92400e;margin-bottom:6px}
-    .sql-box-code{font-family:var(--mono);font-size:12px;color:#451a03;line-height:1.65;word-break:break-all}
-    .alert{border-radius:8px;padding:12px 15px;font-size:13px;margin-bottom:16px;display:flex;align-items:flex-start;gap:10px;border:1px solid transparent}
-    .alert svg{width:16px;height:16px;flex-shrink:0;margin-top:1px}
-    .alert-danger{background:#fff5f5;border-color:#fca5a5;color:#7f1d1d}
-    .alert-success{background:#f0fdf4;border-color:#86efac;color:#166534}
-    .alert-info{background:#eff6ff;border-color:#93c5fd;color:#1e40af}
-    .results-bar{font-size:12px;color:var(--ink4);padding:4px 0 10px;display:flex;align-items:center;gap:8px}
-    .count-pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:10px}
-    .count-danger{background:#fee2e2;color:#7f1d1d}
-    .count-ok{background:#dcfce7;color:#14532d}
-    .results-wrap{background:var(--surface);border:1px solid var(--line);border-radius:10px;overflow:hidden}
-    table{width:100%;border-collapse:collapse;font-size:13px}
-    thead th{background:#0f0f14;color:rgba(255,255,255,.85);padding:9px 15px;text-align:left;font-weight:500;font-size:11.5px;letter-spacing:.2px}
-    tbody td{padding:10px 15px;border-bottom:1px solid var(--line)}
-    tbody tr:last-child td{border-bottom:none}
-    tbody tr:hover td{background:var(--blue-bg)}
-    .role-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:4px;letter-spacing:.2px}
-    .role-admin{background:#fee2e2;color:#7f1d1d}
-    .role-manager{background:#fef9c3;color:#713f12}
-    .role-user{background:#eff6ff;color:#1e40af}
-    .empty-state{text-align:center;padding:40px 24px;color:var(--ink4)}
-    .empty-state svg{width:32px;height:32px;margin:0 auto 12px;display:block;opacity:.3}
-  </style>
+  <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
 <nav class="topbar">
@@ -108,7 +22,7 @@
   </div>
   <div class="env-tag">
     <div class="env-dot"></div>
-    <span class="env-label">{{ environment | upper }} &nbsp;/&nbsp; VULNERABLE</span>
+    <span class="env-label">{{ environment | upper }} &nbsp;/&nbsp; SECURE</span>
   </div>
 </nav>
 <div class="nav">
@@ -119,10 +33,6 @@
   <a href="/search" class="active">
     <svg viewBox="0 0 14 14" fill="none"><circle cx="6" cy="6" r="4" stroke="currentColor" stroke-width="1.2"/><path d="M10 10l2.5 2.5" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
     User search
-  </a>
-  <a href="/debug">
-    <svg viewBox="0 0 14 14" fill="none"><rect x="2" y="4" width="10" height="8" rx="1.5" stroke="currentColor" stroke-width="1.2"/><path d="M5 4V3a2 2 0 014 0v1" stroke="currentColor" stroke-width="1.2"/></svg>
-    Debug
   </a>
 </div>
 <main class="main">
@@ -136,79 +46,51 @@
         <button class="search-btn" type="submit">Search</button>
       </div>
     </form>
-    <div class="payload-section">
-      <div class="payload-label">SQL injection payloads</div>
-      <div class="chips">
-        <a class="chip" href="/search?q=alice">alice</a>
-        <a class="chip" href="/search?q=nobody">nobody</a>
-        <a class="chip chip-danger" href="/search?q=%27+OR+%271%27%3D%271">' OR '1'='1</a>
-        <a class="chip chip-danger" href="/search?q=%27+OR+1%3D1--">' OR 1=1--</a>
-        <a class="chip chip-danger" href="/search?q=%27+OR+%271%27%3D%271%27+--">' OR '1'='1' --</a>
-      </div>
-    </div>
   </div>
 
   {% if q %}
-    <div class="sql-box">
-      <div class="sql-box-label">SQL executed &mdash; never expose this in production</div>
-      <div class="sql-box-code">{{ query }}</div>
-    </div>
-
     {% if error %}
-      <div class="alert alert-danger">
-        <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.2"/><path d="M8 5v3.5M8 11h.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-        <div><strong>Database error:</strong> {{ error }}</div>
+      <div class="alert alert-info">
+        <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.2"/><path d="M8 7v4M8 5h.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        <div><strong>Query error:</strong> {{ error }}</div>
       </div>
     {% elif results | length == 0 %}
       <div class="alert alert-info">
         <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.2"/><path d="M8 7v4M8 5h.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
         <div>No user found matching <strong>{{ q }}</strong>.</div>
       </div>
-    {% elif results | length > 1 %}
-      <div class="alert alert-danger">
-        <svg viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" stroke-width="1.2"/><path d="M8 5v3.5M8 11h.01" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
-        <div>
-          <strong>SQL injection detected.</strong>
-          The payload bypassed the WHERE clause &mdash; all {{ results | length }} records returned.
-          Query <code>WHERE username = '{{ q }}'</code> evaluated to always-true.
-        </div>
-      </div>
     {% else %}
       <div class="alert alert-success">
         <svg viewBox="0 0 16 16" fill="none"><path d="M3 8l3.5 3.5L13 4" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
-        <div>1 record found for <strong>{{ q }}</strong>.</div>
+        <div>{{ results | length }} record{% if results | length != 1 %}s{% endif %} found for <strong>{{ q }}</strong>.</div>
       </div>
     {% endif %}
 
     {% if results %}
       <div class="results-bar">
-        {% if results | length > 1 %}
-          <span class="count-pill count-danger">{{ results | length }} records &mdash; all data exposed</span>
-        {% else %}
-          <span class="count-pill count-ok">{{ results | length }} record</span>
-        {% endif %}
+        <span class="count-pill">{{ results | length }} record{% if results | length != 1 %}s{% endif %}</span>
       </div>
       <div class="results-wrap">
         <table>
           <thead>
             <tr>
-              <th style="width:5%">ID</th>
-              <th style="width:18%">Username</th>
-              <th style="width:33%">Email</th>
-              <th style="width:13%">Role</th>
+              <th class="col-id">ID</th>
+              <th class="col-username">Username</th>
+              <th class="col-email">Email</th>
+              <th class="col-role">Role</th>
               <th>Department</th>
             </tr>
           </thead>
           <tbody>
             {% for row in results %}
             <tr>
-              <td style="color:var(--ink4)">{{ row[0] }}</td>
-              <td style="font-weight:500">{{ row[1] }}</td>
-              <td style="color:var(--ink3)">{{ row[2] }}</td>
+              <td class="col-muted">{{ row[0] }}</td>
+              <td class="col-bold">{{ row[1] }}</td>
+              <td class="col-light">{{ row[2] }}</td>
               <td>
                 <span class="role-badge {% if row[3]=='admin' %}role-admin{% elif row[3]=='manager' %}role-manager{% else %}role-user{% endif %}">{{ row[3] }}</span>
               </td>
-              <td style="color:var(--ink3)">{{ row[4] }}</td>
+              <td class="col-light">{{ row[4] }}</td>
             </tr>
             {% endfor %}
           </tbody>
@@ -224,6 +106,6 @@
     </div>
   {% endif %}
 </main>
-<footer>CIS 410: Cybersecurity Automation &nbsp;&middot;&nbsp; Week 4 &nbsp;&middot;&nbsp; {{ hostname }} &nbsp;&middot;&nbsp; {{ environment }}</footer>
+<footer>CIS 410: Cybersecurity Automation &nbsp;&middot;&nbsp; Week 5 &nbsp;&middot;&nbsp; {{ hostname }} &nbsp;&middot;&nbsp; {{ environment }}</footer>
 </body>
 </html>
